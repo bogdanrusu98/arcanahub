@@ -1,29 +1,30 @@
 "use client";
-// HLS player with hls.js fallback for non-Safari browsers.
-
 import { useEffect, useRef } from "react";
 import Hls from "hls.js";
 
+/**
+ * Minimal HLS player with native Safari fallback.
+ */
 export default function VideoPlayer({ src }: { src: string }) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const video = ref.current;
+    if (!video || !src) return;
 
-    // Safari/iOS can play HLS natively
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = src;
-    } else if (Hls.isSupported()) {
+    // Clean previous source
+    video.removeAttribute("src");
+    video.load();
+
+    if (Hls.isSupported()) {
       const hls = new Hls();
       hls.loadSource(src);
       hls.attachMedia(video);
       return () => hls.destroy();
     } else {
-      // Fallback to direct MP4 (if src is MP4)
       video.src = src;
     }
   }, [src]);
 
-  return <video ref={videoRef} controls className="w-full rounded-lg" />;
+  return <video ref={ref} controls playsInline className="w-full rounded" />;
 }
