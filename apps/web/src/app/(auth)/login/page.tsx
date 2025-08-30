@@ -1,10 +1,7 @@
 "use client";
-
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, getIdToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getIdToken } from "firebase/auth";
-import { FirebaseError } from "firebase/app";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -21,7 +18,6 @@ export default function LoginPage() {
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await getIdToken(cred.user, true);
 
-      // 🔑 creează cookie pe server
       const res = await fetch("/api/auth/sessionLogin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -34,13 +30,16 @@ export default function LoginPage() {
       }
 
       window.location.href = "/feed";
-    } catch (error: any) {
-      setErr(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setErr(error.message);
+      } else {
+        setErr("Unknown error during login");
+      }
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="mx-auto max-w-md">
       <h1 className="mb-6 text-2xl font-bold">Log in</h1>
