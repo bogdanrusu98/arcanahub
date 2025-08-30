@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
-const secret = process.env.STRIPE_SECRET_KEY;
-if (!secret) throw new Error("STRIPE_SECRET_KEY is not set");
-
-// use SDK default apiVersion to avoid TS literal mismatch
-const stripe = new Stripe(secret);
-
 type CheckoutBody = {
   priceId: string;
   successUrl?: string;
@@ -15,7 +9,22 @@ type CheckoutBody = {
   channelId?: string;
 };
 
+// Lazily create the Stripe client only when the route is invoked
+function getStripe() {
+  const secret = process.env.STRIPE_SECRET_KEY;
+  if (!secret) return null; // don't throw at import time
+  return new Stripe(secret);
+}
+
 export async function POST(req: NextRequest) {
+  const stripe = getStripe();
+  if (!stripe) {
+    return NextResponse.json(
+      { error: "Stripe is not configured (missing STRIPE_SECRET_KEY)" },
+      { status: 500 }
+    );
+  }
+
   try {
     const body = (await req.json()) as CheckoutBody;
 
@@ -32,9 +41,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ sessionId: session.id });
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Checkout failed";
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Checkout failed";
     console.error("Checkout error:", message);
     return NextResponse.json({ error: message }, { status: 400 });
   }
