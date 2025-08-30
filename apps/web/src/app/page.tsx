@@ -1,4 +1,5 @@
-// apps/web/src/app/page.tsx
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <section className="grid gap-8 md:grid-cols-2 items-center">
@@ -10,18 +11,18 @@ export default function HomePage() {
           A video platform for tarot creators: upload VODs, go live, and offer channel memberships to your audience.
         </p>
         <div className="flex gap-3">
-          <a
-            href="/watch"
+          <Link
+            href="/feed"
             className="inline-flex items-center rounded bg-purple-600 px-4 py-2 font-medium text-white hover:bg-purple-700"
           >
             Browse content
-          </a>
-          <a
+          </Link>
+          <Link
             href="/login"
             className="inline-flex items-center rounded border border-neutral-700 px-4 py-2 font-medium text-neutral-100 hover:bg-neutral-800"
           >
             Log in
-          </a>
+          </Link>
         </div>
       </div>
 

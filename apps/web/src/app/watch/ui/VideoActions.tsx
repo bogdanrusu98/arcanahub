@@ -15,11 +15,13 @@ export default function VideoActions({ videoId }: { videoId: string }) {
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+      // Future analytics hook:
+      console.debug("share_copied", { videoId });
     } catch {}
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2" data-video-id={videoId}>
       <button
         onClick={() => setLiked((v) => !v)}
         className={`px-3 py-1.5 rounded border ${
@@ -38,7 +40,10 @@ export default function VideoActions({ videoId }: { videoId: string }) {
         {saved ? "Saved" : "Save"}
       </button>
 
-      <button onClick={copy} className="px-3 py-1.5 rounded border border-neutral-700 text-neutral-200 hover:bg-neutral-800">
+      <button
+        onClick={copy}
+        className="px-3 py-1.5 rounded border border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+      >
         {copied ? "Copied!" : "Share"}
       </button>
 

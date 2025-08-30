@@ -5,44 +5,47 @@ import ViewPinger from "../ui/ViewPinger";
 import VideoActions from "../ui/VideoActions";
 import SubscribeCTA from "@/components/SubscribeCTA";
 import Link from "next/link";
+import Image from "next/image";
+import { Channel, Video } from "@/types/content";
 
 /** Load video by id (server) */
-async function getVideo(id: string) {
+async function getVideo(id: string): Promise<Video | null> {
   const doc = await adminDb.collection("videos").doc(id).get();
   if (!doc.exists) return null;
-  const data = doc.data()!;
+  const v = doc.data()!;
   return {
     id: doc.id,
-    title: (data.title as string) ?? "Untitled",
-    playbackUrl: (data.playbackUrl as string) ?? "",
-    playbackId: (data.playbackId as string | null) ?? null,
-    channelId: (data.channelId as string) ?? "",
-    visibility: (data.visibility as "public" | "members") ?? "public",
-    views: (data.views as number) ?? 0,
-    tags: (data.tags as string[] | undefined) ?? [],
-    description: (data.description as string | undefined) ?? "",
-    createdAt: (data.createdAt as number | undefined) ?? Date.now(),
-    shareUrl: (data.shareUrl as string | undefined) ?? null,
+    title: String(v.title ?? "Untitled"),
+    channelId: String(v.channelId ?? ""),
+    playbackUrl: String(v.playbackUrl ?? ""),
+    playbackId: (v.playbackId as string | null) ?? null,
+    thumbnailUrl: (v.thumbnailUrl as string | undefined) ?? null,
+    visibility: (v.visibility as "public" | "members") ?? "public",
+    createdAt: Number(v.createdAt ?? Date.now()),
+    views: (v.views as number | undefined) ?? 0,
+    tags: (v.tags as string[] | undefined) ?? [],
+    description: (v.description as string | undefined) ?? "",
+    shareUrl: (v.shareUrl as string | undefined) ?? null,
   };
 }
 
 /** Load channel minimal info (server) */
-async function getChannel(id: string) {
+async function getChannel(id: string): Promise<Channel | null> {
   const doc = await adminDb.collection("channels").doc(id).get();
   if (!doc.exists) return null;
   const d = doc.data()!;
   return {
     id: doc.id,
-    handle: (d.handle as string) ?? "channel",
-    name: (d.name as string) ?? "Channel",
+    handle: String(d.handle ?? "channel"),
+    name: String(d.name ?? "Channel"),
+    ownerUid: String(d.ownerUid ?? ""),
     avatarUrl: (d.avatarUrl as string | undefined) ?? null,
-    priceId: (d.priceId as string | undefined) ?? "", // Stripe Price ID if you have it
-    ownerUid: (d.ownerUid as string) ?? "",
+    priceId: (d.priceId as string | undefined) ?? undefined,
   };
 }
 
 /** Load a few related videos (same channel, newest first) */
-async function getRelated(channelId: string, excludeId: string) {
+async function getRelated(channelId: string, excludeId: string): Promise<Video[]> {
   const snap = await adminDb
     .collection("videos")
     .where("channelId", "==", channelId)
@@ -52,13 +55,23 @@ async function getRelated(channelId: string, excludeId: string) {
 
   return snap.docs
     .filter((d) => d.id !== excludeId)
-    .map((d) => ({ id: d.id, ...(d.data() as any) })) as Array<{
-      id: string;
-      title?: string;
-      playbackUrl?: string;
-      thumbnailUrl?: string | null;
-      createdAt?: number;
-    }>;
+    .map((d) => {
+      const v = d.data();
+      return {
+        id: d.id,
+        title: String(v.title ?? "Untitled"),
+        channelId: String(v.channelId ?? channelId),
+        playbackUrl: String(v.playbackUrl ?? ""),
+        playbackId: (v.playbackId as string | null) ?? null,
+        thumbnailUrl: (v.thumbnailUrl as string | undefined) ?? null,
+        visibility: (v.visibility as "public" | "members") ?? "public",
+        createdAt: Number(v.createdAt ?? Date.now()),
+        views: (v.views as number | undefined) ?? 0,
+        tags: (v.tags as string[] | undefined) ?? [],
+        description: (v.description as string | undefined) ?? "",
+        shareUrl: (v.shareUrl as string | undefined) ?? null,
+      } as Video;
+    });
 }
 
 /**
@@ -97,11 +110,9 @@ export default async function WatchPage({
         {/* Meta row: views + time + actions */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-neutral-400">
-            {Intl.NumberFormat().format(video.views)} views · {createdAtLabel}
+            {Intl.NumberFormat().format(video.views ?? 0)} views · {createdAtLabel}
             {video.playbackId ? (
-              <span className="ml-2 text-neutral-500">
-                · ID: {video.playbackId.slice(0, 6)}…
-              </span>
+              <span className="ml-2 text-neutral-500">· ID: {video.playbackId.slice(0, 6)}…</span>
             ) : null}
           </div>
           <VideoActions videoId={video.id} />
@@ -112,8 +123,13 @@ export default async function WatchPage({
           <div className="flex items-start gap-3 rounded-lg border border-neutral-800 p-3">
             <div className="h-10 w-10 rounded-full bg-neutral-700 overflow-hidden grid place-items-center text-sm">
               {channel.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={channel.avatarUrl} alt={channel.name} className="h-full w-full object-cover" />
+                <Image
+                  src={channel.avatarUrl}
+                  alt={channel.name}
+                  width={40}
+                  height={40}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 (channel.name?.[0] ?? "A")
               )}
@@ -121,26 +137,19 @@ export default async function WatchPage({
             <div className="flex-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <Link
-                    href={`/channel/${channel.handle}`}
-                    className="font-semibold hover:underline"
-                  >
+                  <Link href={`/channel/${channel.handle}`} className="font-semibold hover:underline">
                     {channel.name}
                   </Link>
                   <div className="text-xs text-neutral-400">@{channel.handle}</div>
                 </div>
-                {isMembersOnly ? (
-                  <SubscribeCTA priceId={channel.priceId || ""} />
-                ) : null}
+                {isMembersOnly ? <SubscribeCTA priceId={channel.priceId || ""} /> : null}
               </div>
 
               {/* Description (collapsible) */}
               {video.description ? (
                 <DescriptionBlock text={video.description} />
               ) : (
-                <p className="mt-3 text-sm text-neutral-400">
-                  No description provided.
-                </p>
+                <p className="mt-3 text-sm text-neutral-400">No description provided.</p>
               )}
 
               {/* Tags */}
@@ -173,9 +182,7 @@ export default async function WatchPage({
           {related.length === 0 ? (
             <div className="text-sm text-neutral-400">No related videos yet.</div>
           ) : (
-            related.map((r) => (
-              <RelatedItem key={r.id} v={r} />
-            ))
+            related.map((r) => <RelatedItem key={r.id} v={r} />)
           )}
         </div>
       </aside>
@@ -191,9 +198,7 @@ function DescriptionBlock({ text }: { text: string }) {
     <details className="mt-3 group">
       <summary className="cursor-pointer list-none text-sm text-neutral-300">
         {isLong ? text.slice(0, MAX) + "…" : text}
-        {isLong ? (
-          <span className="ml-2 text-purple-300 group-open:hidden">Show more</span>
-        ) : null}
+        {isLong ? <span className="ml-2 text-purple-300 group-open:hidden">Show more</span> : null}
       </summary>
       {isLong ? (
         <div className="mt-2 text-sm text-neutral-300 group-open:block hidden">
@@ -215,10 +220,14 @@ function RelatedItem({
   return (
     <Link href={`/watch/${v.id}`} className="flex gap-3 rounded-lg border border-neutral-800 hover:bg-neutral-900 p-2">
       <div className="h-20 w-32 rounded bg-neutral-800 overflow-hidden grid place-items-center text-xs text-neutral-400">
-        {/* Prefer a real thumbnail; fallback to "Video" placeholder */}
         {v.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={v.thumbnailUrl} alt={v.title ?? "Video"} className="h-full w-full object-cover" />
+          <Image
+            src={v.thumbnailUrl}
+            alt={v.title ?? "Video"}
+            width={160}
+            height={90}
+            className="h-full w-full object-cover"
+          />
         ) : (
           "Video"
         )}

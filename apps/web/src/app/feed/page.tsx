@@ -1,59 +1,58 @@
 import { adminDb } from "@/lib/firebaseAdmin";
+import { Video } from "@/types/content";
 import Link from "next/link";
-import { getServerUser } from "@/lib/getServerUser";
+import Image from "next/image";
 
-async function getChannels() {
-  const snap = await adminDb.collection("channels").limit(12).get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-}
-
-async function getLatestVideos() {
-  const snap = await adminDb.collection("videos").orderBy("createdAt","desc").limit(12).get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+async function getLatestVideos(): Promise<Video[]> {
+  const snap = await adminDb.collection("videos").orderBy("createdAt", "desc").limit(24).get();
+  return snap.docs.map((d) => {
+    const v = d.data();
+    return {
+      id: d.id,
+      title: String(v.title ?? "Untitled"),
+      channelId: String(v.channelId ?? ""),
+      playbackUrl: String(v.playbackUrl ?? ""),
+      playbackId: (v.playbackId as string | null) ?? null,
+      thumbnailUrl: (v.thumbnailUrl as string | undefined) ?? null,
+      visibility: (v.visibility as "public" | "members") ?? "public",
+      createdAt: Number(v.createdAt ?? Date.now()),
+      views: (v.views as number | undefined) ?? 0,
+      tags: (v.tags as string[] | undefined) ?? [],
+      description: (v.description as string | undefined) ?? "",
+      shareUrl: (v.shareUrl as string | undefined) ?? null,
+    } as Video;
+  });
 }
 
 export default async function FeedPage() {
-  const user = await getServerUser();
-  if (!user) return <div>Please log in.</div>;
-
-  const [channels, videos] = await Promise.all([getChannels(), getLatestVideos()]);
+  const videos = await getLatestVideos();
 
   return (
-    <section className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Your feed</h1>
-        <p className="text-neutral-400">Welcome{user.email ? `, ${user.email}` : ""}!</p>
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-xl font-semibold">Channels</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {channels.map(c => (
-            <Link key={c.id} href={`/channel/${c.handle ?? c.id}`} className="rounded border border-neutral-800 p-4 hover:bg-neutral-900">
-              <div className="font-medium">{c.name ?? c.handle}</div>
-              <div className="text-sm text-neutral-400 line-clamp-2">{c.description ?? "Tarot channel"}</div>
-            </Link>
-          ))}
-          {channels.length === 0 && <div className="text-neutral-400">No channels yet.</div>}
-        </div>
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-xl font-semibold">Latest videos</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {videos.map(v => (
-            <Link key={v.id} href={`/watch/${v.id}`} className="rounded border border-neutral-800 p-2 hover:bg-neutral-900">
-              <div className="aspect-video rounded bg-neutral-800 overflow-hidden">
-                {v.thumbnailUrl ? <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" /> : null}
-              </div>
-              <div className="p-2">
-                <div className="font-medium">{v.title}</div>
-                <div className="text-xs text-neutral-500">{v.visibility ?? "public"}</div>
-              </div>
-            </Link>
-          ))}
-          {videos.length === 0 && <div className="text-neutral-400">No videos yet.</div>}
-        </div>
+    <section className="space-y-6">
+      <h1 className="text-2xl font-bold">Latest videos</h1>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {videos.map((v) => (
+          <Link
+            key={v.id}
+            href={`/watch/${v.id}`}
+            className="rounded-lg border border-neutral-800 hover:bg-neutral-900 p-2"
+          >
+            <div className="h-40 w-full rounded bg-neutral-800 overflow-hidden grid place-items-center text-xs text-neutral-400">
+              {v.thumbnailUrl ? (
+                <Image
+                  src={v.thumbnailUrl}
+                  alt={v.title}
+                  width={640}
+                  height={360}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                "Video"
+              )}
+            </div>
+            <div className="mt-2 text-sm font-medium line-clamp-2">{v.title}</div>
+          </Link>
+        ))}
       </div>
     </section>
   );
