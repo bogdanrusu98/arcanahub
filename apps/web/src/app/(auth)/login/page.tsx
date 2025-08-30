@@ -9,29 +9,33 @@ import { FirebaseError } from "firebase/app";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState<string>("");
+  const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErr("");
     setLoading(true);
+
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      // 🔑 get ID token and set session cookie on the server
+      const cred = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await getIdToken(cred.user, true);
-      await fetch("/api/auth/sessionLogin", {
+
+      // 🔑 creează cookie pe server
+      const res = await fetch("/api/auth/sessionLogin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
       });
 
-      const next = new URLSearchParams(window.location.search).get("next") || "/feed";
-      window.location.href = next;
-    } catch (error: unknown) {
-      if (error instanceof FirebaseError) setErr(error.message);
-      else if (error instanceof Error) setErr(error.message);
-      else setErr("Authentication failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to create session");
+      }
+
+      window.location.href = "/feed";
+    } catch (error: any) {
+      setErr(error.message);
     } finally {
       setLoading(false);
     }

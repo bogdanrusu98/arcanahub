@@ -2,38 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
 const SESSION_COOKIE_NAME = "__session";
-const EXPIRES_IN_SEC = 7 * 24 * 60 * 60; // 7 days
+const EXPIRES_IN_SEC = 7 * 24 * 60 * 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { idToken } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const idToken = typeof body?.idToken === "string" ? body.idToken : null;
+
     if (!idToken) {
-      return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
+      return NextResponse.json({ error: "Missing idToken in request body" }, { status: 400 });
     }
 
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: EXPIRES_IN_SEC * 1000,
-    });
+    // optional: check token before creating cookie (helps error clarity)
+    await adminAuth.verifyIdToken(idToken);
 
-    const isProd =
-      process.env.NODE_ENV === "production" ||
-      process.env.VERCEL === "1"; // on Vercel this is set
+    const cookie = await adminAuth.createSessionCookie(idToken, { expiresIn: EXPIRES_IN_SEC * 1000 });
+
+    const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
 
     const res = NextResponse.json({ ok: true });
-    // Use NextResponse.cookies API (handles header formatting)
     res.cookies.set({
       name: SESSION_COOKIE_NAME,
-      value: sessionCookie,
+      value: cookie,
       httpOnly: true,
       sameSite: "lax",
       path: "/",
       maxAge: EXPIRES_IN_SEC,
-      secure: isProd, // 🔑 only secure in prod
+      secure: isProd, // Secure în prod, non-secure local
     });
+
     return res;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to create session";
-    console.error("sessionLogin error:", msg);
+    // Trimite eroarea reală la client ca să o vezi în DevTools
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
