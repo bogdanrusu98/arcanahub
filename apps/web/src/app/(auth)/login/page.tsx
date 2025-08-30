@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { FirebaseError } from "firebase/app"; // precise error type
+import { getIdToken } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,16 +17,21 @@ export default function LoginPage() {
     setErr("");
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      window.location.href = "/";
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      // 🔑 get ID token and set session cookie on the server
+      const idToken = await getIdToken(cred.user, true);
+      await fetch("/api/auth/sessionLogin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const next = new URLSearchParams(window.location.search).get("next") || "/feed";
+      window.location.href = next;
     } catch (error: unknown) {
-      if (error instanceof FirebaseError) {
-        setErr(error.message);
-      } else if (error instanceof Error) {
-        setErr(error.message);
-      } else {
-        setErr("Authentication failed");
-      }
+      if (error instanceof FirebaseError) setErr(error.message);
+      else if (error instanceof Error) setErr(error.message);
+      else setErr("Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -39,7 +45,7 @@ export default function LoginPage() {
           <label className="mb-1 block text-sm font-medium">Email</label>
           <input
             type="email"
-            className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600/30"
+            className="w-full text-black rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600/30"
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -52,7 +58,7 @@ export default function LoginPage() {
           <label className="mb-1 block text-sm font-medium">Password</label>
           <input
             type="password"
-            className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600/30"
+            className="w-full text-black rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600/30"
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

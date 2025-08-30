@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Link from "next/link";
 import AuthStatus from "@/components/AuthStatus";
+import AuthProvider from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   title: "ArcanaHub",
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <AuthProvider>
+          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        </AuthProvider>
 
         <footer className="mt-12 border-t border-neutral-800 bg-neutral-900">
           <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-neutral-400">

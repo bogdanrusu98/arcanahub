@@ -1,16 +1,21 @@
 import VideoPlayer from "@/components/VideoPlayer";
+import SubscribeButton from "@/components/SubscribeButton";
 
-export default function WatchPage() {
-  const demo = process.env.NEXT_PUBLIC_SAMPLE_PLAYLIST!;
+export default function WatchPage({ params }: { params: { id: string } }) {
+  const { id } = params;
+  const isMembersOnly = true;
+
   return (
-    <section className="grid gap-6">
-      <h1 className="text-2xl font-bold">Watch</h1>
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-        <VideoPlayer src={demo} />
-      </div>
-      <p className="text-sm text-neutral-400">
-        Replace the demo HLS URL (env: <code>NEXT_PUBLIC_SAMPLE_PLAYLIST</code>) with your media provider playback URL.
-      </p>
-    </section>
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-bold">Video {id}</h1>
+      {isMembersOnly ? (
+        <div className="p-4 border border-purple-600 rounded">
+          <p className="mb-2">This video is for members only.</p>
+          <SubscribeButton priceId="price_1S1pJpEBoJoG2kTn1tx9GZo3" />
+        </div>
+      ) : (
+        <VideoPlayer src={process.env.NEXT_PUBLIC_SAMPLE_PLAYLIST!} />
+      )}
+    </div>
   );
 }

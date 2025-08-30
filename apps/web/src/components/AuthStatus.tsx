@@ -1,34 +1,48 @@
 "use client";
-// Simple auth-aware header: shows user email + Logout, or Login link.
+// Shows user email + Logout; creates/clears a Firebase session cookie via API.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { onAuthStateChanged, signOut, User, getIdToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 export default function AuthStatus() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Subscribe to Firebase Auth user changes
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u ?? null);
+      // When user logs in on client, exchange ID token for a session cookie.
+      if (u) {
+        const idToken = await getIdToken(u, true);
+        await fetch("/api/auth/sessionLogin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        });
+      } else {
+        await fetch("/api/auth/sessionLogout", { method: "POST" });
+      }
+    });
     return () => unsub();
   }, []);
 
   if (!user) {
     return (
-      <Link
-        href="/login"
-        className="rounded border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800 text-neutral-100"
-      >
-        Log in
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link href="/login" className="rounded border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800 text-neutral-100">
+          Log in
+        </Link>
+        <Link href="/signup" className="rounded bg-purple-600 px-3 py-1.5 text-white hover:bg-purple-700">
+          Sign up
+        </Link>
+      </div>
     );
   }
 
   const handleLogout = async () => {
+    await fetch("/api/auth/sessionLogout", { method: "POST" }); // clear cookie first
     await signOut(auth);
-    // Redirect to home (optional)
     window.location.href = "/";
   };
 
