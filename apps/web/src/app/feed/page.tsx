@@ -1,4 +1,3 @@
-"use client";
 
 import { adminDb } from "@/lib/server/firebaseAdmin";
 import { Video } from "@/types/content";
