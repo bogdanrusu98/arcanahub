@@ -1,5 +1,5 @@
 import { getStorage } from "firebase-admin/storage";
-import { adminApp } from "./firebaseAdmin";
+import { adminApp } from "./server/firebaseAdmin";
 
 const storage = getStorage(adminApp);
 

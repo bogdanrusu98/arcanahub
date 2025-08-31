@@ -1,6 +1,6 @@
 "use client";
 
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 import { Video } from "@/types/content";
 import Link from "next/link";
 import Image from "next/image";

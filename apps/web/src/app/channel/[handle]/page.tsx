@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 import { Channel, Video } from "@/types/content";
 import Image from "next/image";
 import Link from "next/link";

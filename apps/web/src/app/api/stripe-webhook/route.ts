@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 
 function getStripe() {
   const secret = process.env.STRIPE_SECRET_KEY;

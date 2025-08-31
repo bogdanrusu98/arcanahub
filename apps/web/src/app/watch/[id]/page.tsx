@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 import VideoPlayer from "@/components/VideoPlayer";
 import { timeAgo } from "@/lib/timeAgo";
 import ViewPinger from "../ui/ViewPinger";

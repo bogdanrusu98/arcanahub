@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 
 /**
  * Increments the "views" counter for a video document.

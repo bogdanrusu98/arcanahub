@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 
 export const runtime = "nodejs";
 export const contentType = "image/png";

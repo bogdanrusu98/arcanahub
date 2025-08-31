@@ -1,5 +1,5 @@
 import { getServerUser } from "@/lib/getServerUser";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 import NewChannelForm from "./ui/NewChannelForm";
 import VideoUpload from "./ui/VideoUpload";
 import { Channel } from "@/types/content";

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebaseAdmin";
+import { adminAuth } from "@/lib/server/firebaseAdmin";
 
 const SESSION_COOKIE_NAME = "__session";
 const EXPIRES_IN_SEC = 7 * 24 * 60 * 60;

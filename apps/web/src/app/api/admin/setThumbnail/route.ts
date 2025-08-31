@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBucket, publicDownloadUrl, signedReadUrl } from "@/lib/storageServer";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb } from "@/lib/server/firebaseAdmin";
 
 /**
  * POST multipart/form-data with fields:
