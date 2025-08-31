@@ -1,3 +1,5 @@
+"use client";
+
 import { adminDb } from "@/lib/firebaseAdmin";
 import { Video } from "@/types/content";
 import Link from "next/link";

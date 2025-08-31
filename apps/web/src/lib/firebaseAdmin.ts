@@ -22,19 +22,19 @@ const hasCreds = Boolean(projectId && clientEmail && privateKey);
 
 function initAdmin() {
   if (getApps().length) return getApp();
-
   if (hasCreds) {
     return initializeApp({
       credential: cert({ projectId: projectId!, clientEmail: clientEmail!, privateKey: privateKey! }),
       projectId,
-      // databaseURL: process.env.FIREBASE_DATABASE_URL, // add later if you enable RTDB
     });
   }
-
   return initializeApp();
 }
 
 const app = initAdmin();
+
+// 👉 exportă și instanța pentru a putea importa { adminApp }
+export const adminApp = app;
 
 export const adminAuth = getAdminAuth(app);
 export const adminDb = getAdminDb(app);

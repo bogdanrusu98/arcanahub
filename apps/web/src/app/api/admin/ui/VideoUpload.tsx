@@ -98,12 +98,30 @@ export default function VideoUpload({ channels }: { channels: Channel[] }) {
         try {
           // 3) Wait for playback info (URL + ID)
           const info = await pollPlaybackInfo(assetId);
-          if (!info) {
+        
+          // Guard: info poate fi null sau fără playbackId încă
+          if (!info || !info.playbackId) {
             setMsg("Asset not ready yet. Try again in a minute.");
             return;
           }
-          const { playbackId, playbackUrl } = info; // ✅ use Livepeer's URL (works for VOD/CDN)
-
+        
+          const { playbackId } = info;
+        
+          // Livepeer nu dă playbackUrl în răspuns standard -> îl construim
+          const playbackUrl =
+            info.playbackUrl ??
+            `https://lp-playback.com/hls/${playbackId}/index.m3u8`;
+        
+          // Template sigur pentru thumbnail
+          const template =
+            process.env.NEXT_PUBLIC_LIVEPEER_THUMB_URL_TEMPLATE ??
+            "https://image.livepeer.studio/thumbnail/{playbackId}.jpg?time=5";
+        
+          // Dacă cineva a setat template fără placeholder, evităm .replace pe undefined
+          const thumbnailUrl = template.includes("{playbackId}")
+            ? template.replace("{playbackId}", playbackId)
+            : template;
+        
           // 4) Create Firestore "video" doc
           const nameForTitle = title.trim() || file.name;
           const createRes = await fetch("/api/admin/createVideo", {
@@ -114,16 +132,17 @@ export default function VideoUpload({ channels }: { channels: Channel[] }) {
               channelId,
               visibility,
               playbackId,
+              thumbnailUrl,
               playbackUrl,
             }),
           });
-
+        
           const createData = await createRes.json().catch(() => ({}));
           if (!createRes.ok) {
             setMsg(`Error saving video: ${createData?.error ?? createRes.status}`);
             return;
           }
-
+        
           setVideoId(createData.id);
           setMsg(`Video saved! ID=${createData.id}`);
           setTitle("");
@@ -131,6 +150,7 @@ export default function VideoUpload({ channels }: { channels: Channel[] }) {
         } catch (err) {
           setMsg(err instanceof Error ? err.message : "Processing failed");
         }
+        
       },
     });
 
