@@ -14,6 +14,7 @@ export type Video = {
   title: string;
   channelId: string;
   playbackUrl: string;
+  
   playbackId?: string | null;
   thumbnailUrl?: string | null;
   visibility: Visibility;
