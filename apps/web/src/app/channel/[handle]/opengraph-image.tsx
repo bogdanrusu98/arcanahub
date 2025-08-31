@@ -5,55 +5,52 @@ export const runtime = "nodejs";
 export const contentType = "image/png";
 export const size = { width: 1200, height: 630 };
 
-type VideoDoc = {
-  title?: string;
-  channelId?: string;
-  thumbnailUrl?: string | null;
-};
 type ChannelDoc = {
   name?: string;
   handle?: string;
   avatarUrl?: string | null;
+  id?: string;
 };
 
 const BG_FALLBACK = "linear-gradient(135deg, #0b0b0f 0%, #1a0f1f 100%)";
 
-async function getVideoAndChannel(id: string) {
-  const vSnap = await adminDb.collection("videos").doc(id).get();
-  if (!vSnap.exists) return null;
+async function getChannelByHandle(handle: string) {
+  const snap = await adminDb
+    .collection("channels")
+    .where("handle", "==", handle)
+    .limit(1)
+    .get();
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  const ch = d.data() as ChannelDoc;
+  ch.id = d.id;
+  return ch;
+}
 
-  const v = (vSnap.data() || {}) as VideoDoc;
-  const chId = v.channelId ?? "";
-  let ch: ChannelDoc | null = null;
-
-  if (chId) {
-    const chSnap = await adminDb.collection("channels").doc(chId).get();
-    ch = chSnap.exists ? ((chSnap.data() || {}) as ChannelDoc) : null;
-  }
-
-  return { v, ch };
+async function getLatestVideoThumb(channelId: string) {
+  const snap = await adminDb
+    .collection("videos")
+    .where("channelId", "==", channelId)
+    .orderBy("createdAt", "desc")
+    .limit(1)
+    .get();
+  if (snap.empty) return null;
+  const v = snap.docs[0].data();
+  return (v.thumbnailUrl as string | null) ?? null;
 }
 
 export default async function Image({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ handle: string }>;
 }) {
-  const { id } = await params;
+  const { handle } = await params;
 
-  const data = await getVideoAndChannel(id);
-
-  const title =
-    data?.v?.title?.trim() ||
-    "Watch on ArcanaHub";
-  const channelName = data?.ch?.name?.trim() || "ArcanaHub";
-  const handle = data?.ch?.handle ? `@${data.ch.handle}` : "";
-  const thumb = data?.v?.thumbnailUrl ?? null;
-  const avatar = data?.ch?.avatarUrl ?? null;
-
-  // Title size adapts to length
-  const titleFontSize =
-    title.length > 64 ? 48 : title.length > 48 ? 56 : 68;
+  const ch = await getChannelByHandle(handle);
+  const name = ch?.name?.trim() || "ArcanaHub Channel";
+  const at = ch?.handle ? `@${ch.handle}` : "";
+  const avatar = ch?.avatarUrl ?? null;
+  const hero = ch?.id ? await getLatestVideoThumb(ch.id) : null;
 
   return new ImageResponse(
     (
@@ -61,17 +58,17 @@ export default async function Image({
         style={{
           width: size.width,
           height: size.height,
-          display: "flex",
           position: "relative",
+          display: "flex",
           background: BG_FALLBACK,
           fontFamily:
             "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
         }}
       >
-        {/* Blurred background from thumbnail */}
-        {thumb ? (
+        {/* Background from latest video thumbnail (blurred) */}
+        {hero ? (
           <img
-            src={thumb}
+            src={hero}
             alt=""
             width={size.width}
             height={size.height}
@@ -79,35 +76,33 @@ export default async function Image({
               position: "absolute",
               inset: 0,
               objectFit: "cover",
-              filter: "blur(6px) brightness(0.55)",
+              filter: "blur(6px) brightness(0.5)",
             }}
           />
         ) : null}
 
-        {/* Overlay gradient for readability */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "radial-gradient(60% 60% at 20% 20%, rgba(168,85,247,0.25) 0%, rgba(0,0,0,0.0) 60%), linear-gradient(0deg, rgba(0,0,0,0.35), rgba(0,0,0,0.35))",
+              "radial-gradient(50% 50% at 15% 20%, rgba(168,85,247,0.25) 0%, rgba(0,0,0,0.0) 60%), linear-gradient(0deg, rgba(0,0,0,0.35), rgba(0,0,0,0.35))",
           }}
         />
 
-        {/* Foreground content */}
         <div
           style={{
             zIndex: 2,
             display: "flex",
             flexDirection: "column",
             gap: 24,
-            padding: 64,
+            padding: 72,
             width: "100%",
             height: "100%",
             justifyContent: "center",
           }}
         >
-          {/* Brand chip */}
+          {/* Brand */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
@@ -123,54 +118,50 @@ export default async function Image({
             </div>
           </div>
 
-          {/* Title */}
-          <div
-            style={{
-              fontSize: titleFontSize,
-              fontWeight: 800,
-              lineHeight: 1.1,
-              color: "#fff",
-              textShadow: "0 4px 24px rgba(0,0,0,0.35)",
-              maxWidth: 960,
-            }}
-          >
-            {title}
-          </div>
-
-          {/* Channel row (avatar + name + handle) */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* Channel header */}
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             {avatar ? (
               <img
                 src={avatar}
                 alt=""
-                width={48}
-                height={48}
+                width={84}
+                height={84}
                 style={{
-                  width: 48,
-                  height: 48,
+                  width: 84,
+                  height: 84,
                   borderRadius: 999,
                   objectFit: "cover",
-                  boxShadow: "0 0 16px rgba(167,139,250,0.5)",
+                  boxShadow: "0 0 18px rgba(167,139,250,0.6)",
                 }}
               />
             ) : (
               <div
                 style={{
-                  width: 48,
-                  height: 48,
+                  width: 84,
+                  height: 84,
                   borderRadius: 999,
                   background: "#a78bfa",
-                  boxShadow: "0 0 16px rgba(167,139,250,0.7)",
+                  boxShadow: "0 0 18px rgba(167,139,250,0.6)",
                 }}
               />
             )}
+
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: 26, color: "#e5e7eb" }}>{channelName}</div>
-              <div style={{ fontSize: 22, color: "#a1a1aa" }}>{handle}</div>
+              <div
+                style={{
+                  fontSize: 64,
+                  fontWeight: 800,
+                  color: "#fff",
+                  lineHeight: 1.05,
+                  textShadow: "0 4px 24px rgba(0,0,0,0.35)",
+                }}
+              >
+                {name}
+              </div>
+              <div style={{ fontSize: 28, color: "#a1a1aa" }}>{at}</div>
             </div>
           </div>
 
-          {/* Footer */}
           <div
             style={{
               position: "absolute",
@@ -180,7 +171,7 @@ export default async function Image({
               fontSize: 20,
             }}
           >
-            arcanahub.com • video
+            arcanahub.com • channel
           </div>
         </div>
       </div>

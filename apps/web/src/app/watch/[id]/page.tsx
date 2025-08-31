@@ -44,6 +44,24 @@ async function getChannel(id: string): Promise<Channel | null> {
   };
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return {
+    title: "Watch • ArcanaHub",
+    description: "Tarot videos & live streaming.",
+    openGraph: {
+      type: "video.other",
+      url: `/watch/${id}`,
+      images: [{ url: `/watch/${id}/opengraph-image` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: [`/watch/${id}/opengraph-image`],
+    },
+  };
+}
+
+
 /** Load a few related videos (same channel, newest first) */
 async function getRelated(channelId: string, excludeId: string): Promise<Video[]> {
   const snap = await adminDb

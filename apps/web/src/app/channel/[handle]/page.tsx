@@ -45,6 +45,24 @@ async function getChannelVideos(channelId: string): Promise<Video[]> {
   });
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
+  const { handle } = await params;
+  return {
+    title: `Channel @${handle} • ArcanaHub`,
+    description: "Tarot creators on ArcanaHub.",
+    openGraph: {
+      type: "profile",
+      url: `/channel/${handle}`,
+      images: [{ url: `/channel/${handle}/opengraph-image` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: [`/channel/${handle}/opengraph-image`],
+    },
+  };
+}
+
+
 export default async function ChannelPage({
   params,
 }: {
