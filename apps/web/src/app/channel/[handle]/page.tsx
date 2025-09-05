@@ -1,119 +1,116 @@
-import { adminDb } from "@/lib/server/firebaseAdmin";
-import { Channel, Video } from "@/types/content";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { getChannelByHandle, getChannelVideos } from "@/lib/server/channel";
+import SubscribeCTA from "@/components/SubscribeCTA";
 
-async function getChannelByHandle(handle: string): Promise<Channel | null> {
-  const snap = await adminDb.collection("channels").where("handle", "==", handle).limit(1).get();
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  const data = d.data();
-  return {
-    id: d.id,
-    handle: String(data.handle ?? handle),
-    name: String(data.name ?? "Channel"),
-    ownerUid: String(data.ownerUid ?? ""),
-    avatarUrl: (data.avatarUrl as string | undefined) ?? null,
-    priceId: (data.priceId as string | undefined) ?? undefined,
-  };
-}
+type PageProps = { params: Promise<{ handle: string }> };
 
-async function getChannelVideos(channelId: string): Promise<Video[]> {
-  const snap = await adminDb
-    .collection("videos")
-    .where("channelId", "==", channelId)
-    .orderBy("createdAt", "desc")
-    .limit(24)
-    .get();
-
-  return snap.docs.map((d) => {
-    const v = d.data();
-    return {
-      id: d.id,
-      title: String(v.title ?? "Untitled"),
-      channelId: String(v.channelId ?? ""),
-      playbackUrl: String(v.playbackUrl ?? ""),
-      playbackId: (v.playbackId as string | null) ?? null,
-      thumbnailUrl: (v.thumbnailUrl as string | undefined) ?? null,
-      visibility: (v.visibility as "public" | "members") ?? "public",
-      createdAt: Number(v.createdAt ?? Date.now()),
-      views: (v.views as number | undefined) ?? 0,
-      tags: (v.tags as string[] | undefined) ?? [],
-      description: (v.description as string | undefined) ?? "",
-      shareUrl: (v.shareUrl as string | undefined) ?? null,
-    } as Video;
-  });
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
+  const channel = await getChannelByHandle(handle);
+  const title = channel ? `${channel.name} (@${channel.handle})` : `Channel @${handle}`;
+  const desc = channel?.description ?? "Channel on ArcanaHub";
+  const og = channel?.bannerUrl ?? channel?.avatarUrl ?? undefined;
+
   return {
-    title: `Channel @${handle} • ArcanaHub`,
-    description: "Tarot creators on ArcanaHub.",
+    title,
+    description: desc,
     openGraph: {
+      title,
+      description: desc,
+      images: og ? [{ url: og }] : undefined,
       type: "profile",
-      url: `/channel/${handle}`,
-      images: [{ url: `/channel/${handle}/opengraph-image` }],
     },
     twitter: {
       card: "summary_large_image",
-      images: [`/channel/${handle}/opengraph-image`],
+      title,
+      description: desc,
+      images: og ? [og] : undefined,
     },
   };
 }
 
-
-export default async function ChannelPage({
-  params,
-}: {
-  params: Promise<{ handle: string }>;
-}) {
+export default async function ChannelPage({ params }: PageProps) {
   const { handle } = await params;
-  const ch = await getChannelByHandle(handle);
-  if (!ch) return <div className="p-6">Channel not found.</div>;
+  const channel = await getChannelByHandle(handle);
+  if (!channel) {
+    return <div className="p-6">Channel not found.</div>;
+  }
 
-  const videos = await getChannelVideos(ch.id);
+  const initial = await getChannelVideos(channel.id, 12);
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-14 w-14 rounded-full overflow-hidden bg-neutral-800 grid place-items-center">
-          {ch.avatarUrl ? (
-            <Image src={ch.avatarUrl} alt={ch.name} width={56} height={56} className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-lg">{ch.name[0] ?? "A"}</span>
-          )}
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">{ch.name}</h1>
-          <div className="text-sm text-neutral-400">@{ch.handle}</div>
+      {/* Banner */}
+      <div className="relative h-40 w-full rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900">
+        {channel.bannerUrl ? (
+          <Image
+            src={channel.bannerUrl}
+            alt={`${channel.name} banner`}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        ) : null}
+
+        {/* Avatar + name */}
+        <div className="absolute left-4 bottom-4 flex items-center gap-3">
+          <div className="h-16 w-16 rounded-full overflow-hidden bg-neutral-700 grid place-items-center text-lg">
+            {channel.avatarUrl ? (
+              <Image
+                src={channel.avatarUrl}
+                alt={channel.name}
+                width={64}
+                height={64}
+                className="h-full w-full object-cover"
+                unoptimized
+              />
+            ) : (
+              (channel.name?.[0] ?? "A")
+            )}
+          </div>
+          <div>
+            <h1 className="text-xl font-bold">{channel.name}</h1>
+            <div className="text-sm text-neutral-400">
+              @{channel.handle} · {channel.subscriberCount ?? 0} subscribers
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {videos.map((v) => (
-          <Link
-            key={v.id}
-            href={`/watch/${v.id}`}
-            className="rounded-lg border border-neutral-800 hover:bg-neutral-900 p-2"
-          >
-            <div className="h-40 w-full rounded bg-neutral-800 overflow-hidden grid place-items-center text-xs text-neutral-400">
-              {v.thumbnailUrl ? (
-                <Image
-                  src={v.thumbnailUrl}
-                  alt={v.title}
-                  width={640}
-                  height={360}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                "Video"
-              )}
-            </div>
-            <div className="mt-2 text-sm font-medium line-clamp-2">{v.title}</div>
-          </Link>
-        ))}
+      {/* Actions row */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-neutral-300 max-w-3xl">
+          {channel.description ?? "No description provided."}
+        </div>
+        {channel.priceId ? <SubscribeCTA priceId={channel.priceId} /> : null}
       </div>
+
+      {/* Tabs (static for now) */}
+      <div className="border-b border-neutral-800">
+        <div className="flex gap-4 text-sm">
+          <span className="px-2 py-2 border-b-2 border-purple-400">Videos</span>
+          <Link href={`/channel/${channel.handle}?tab=about`} className="px-2 py-2 text-neutral-400 hover:text-neutral-200">
+            About
+          </Link>
+        </div>
+      </div>
+
+      {/* Videos list with pagination */}
+      <Suspense fallback={<div>Loading videos…</div>}>
+        {/* client component to paginate */}
+        {/* @ts-expect-error Async Server Component interop comment not needed in Next 15, but safe */}
+        <ChannelVideos island channelId={channel.id} initial={initial} />
+      </Suspense>
     </section>
   );
+}
+
+/** Inline dynamic import keeps page file tidy */
+async function ChannelVideos(props: { channelId: string; initial: { items: any[]; nextCursor: string | null } }) {
+  const Mod = await import("./ChannelVideosClient");
+  const ChannelVideosClient = Mod.default;
+  return <ChannelVideosClient channelId={props.channelId} initial={props.initial} />;
 }

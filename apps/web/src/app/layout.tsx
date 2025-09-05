@@ -1,40 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Link from "next/link";
-import AuthStatus from "@/components/AuthStatus";
-import AuthProvider from "@/components/AuthProvider";
+import { getRecommendedChannels } from "@/lib/server/getChannels";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "ArcanaHub",
   description: "Live & VOD platform for tarot creators",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const recommended = await getRecommendedChannels(20);
+
   return (
     <html lang="en">
-      <body className="min-h-screen bg-neutral-950 text-neutral-100">
-        <header className="border-b border-neutral-800 bg-neutral-900/70 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="text-xl font-semibold tracking-tight">
-              <span className="text-purple-400">Arcana</span>Hub
-            </Link>
-            <nav className="flex items-center gap-4 text-sm">
-              <Link href="/watch" className="text-neutral-200 hover:text-white">Watch</Link>
-              <Link href="/live/demo" className="text-neutral-200 hover:text-white">Live</Link>
-              <AuthStatus />
-            </nav>
-          </div>
-        </header>
-
-        <AuthProvider>
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-        </AuthProvider>
-
-        <footer className="mt-12 border-t border-neutral-800 bg-neutral-900">
-          <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-neutral-400">
-            © {new Date().getFullYear()} ArcanaHub. All rights reserved.
-          </div>
-        </footer>
+      <body>
+        <AppShell recommended={recommended}>{children}</AppShell>
       </body>
     </html>
   );

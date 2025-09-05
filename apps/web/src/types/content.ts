@@ -4,9 +4,13 @@ export type Channel = {
   id: string;
   handle: string;
   name: string;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  description?: string | null;
   ownerUid: string;
-  avatarUrl?: string | null;
-  priceId?: string;
+  priceId?: string | null;  
+  subscriberCount?: number;
+  createdAt?: number;
 };
 
 export type Video = {
@@ -16,7 +20,9 @@ export type Video = {
   playbackUrl: string;
   
   playbackId?: string | null;
-  thumbnailUrl?: string | null;
+  thumbnailUrl?: string | null;       
+  thumbnailVttUrl?: string | null;    
+  thumbDefaultTime?: number;   
   visibility: Visibility;
   createdAt: number;
   views?: number;
